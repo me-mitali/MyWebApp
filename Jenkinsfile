@@ -1,14 +1,11 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKER_IMAGE = "mitali23/mywebapp:1.0"
-    }
-
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'master', url: 'https://github.com/me-mitali/MyWebApp.git'
+                git branch: 'master',
+                    url: 'https://github.com/me-mitali/MyWebApp.git'
             }
         }
 
@@ -22,16 +19,20 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo "Building Docker image..."
-                bat "docker build -t ${DOCKER_IMAGE} ."
+                bat 'docker build -t mitali23/mywebapp:1.0 .'
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
                 echo "Pushing Docker image to Docker Hub..."
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
-                    bat "docker push ${DOCKER_IMAGE}"
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
+                                                 usernameVariable: 'DOCKER_USER',
+                                                 passwordVariable: 'DOCKER_PASS')]) {
+                    bat """
+                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                        docker push mitali23/mywebapp:1.0
+                    """
                 }
             }
         }
@@ -39,18 +40,17 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 echo "Deploying container..."
-                bat "docker rm -f mywebapp || echo 'No old container'"
-                bat "docker run -d -p 8083:8080 --name mywebapp ${DOCKER_IMAGE}"
+                bat 'docker run -d -p 8080:8080 mitali23/mywebapp:1.0'
             }
         }
     }
 
     post {
         success {
-            echo '✅ Deployment successful!'
+            echo "✅ Build and deployment successful!"
         }
         failure {
-            echo '❌ Build failed!'
+            echo "❌ Build failed!"
         }
     }
 }
