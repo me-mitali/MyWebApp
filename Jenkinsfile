@@ -27,14 +27,17 @@ pipeline {
         }
 
         stage('Push to Docker Hub') {
-            steps {
-                echo "Pushing Docker image to Docker Hub..."
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
-                    bat "docker push ${DOCKER_IMAGE}"
-                }
-            }
+    steps {
+        echo 'Pushing Docker image to Docker Hub...'
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+            bat """
+                echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                docker push mitali23/mywebapp:1.0
+            """
         }
+    }
+}
+
 
         stage('Deploy Container') {
             steps {
