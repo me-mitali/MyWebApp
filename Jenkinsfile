@@ -26,10 +26,13 @@ pipeline {
             steps {
                 echo 'Building Docker image...'
                 bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
-                // Tag with commit hash for unique tagging
+
+                // Tag image with short Git commit hash
                 script {
-                    def gitCommit = bat(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    def gitCommit = bat(script: 'git rev-parse --short HEAD', returnStdout: true)
+                    gitCommit = gitCommit.trim() // Remove newlines
                     env.IMAGE_TAG_HASH = gitCommit
+                    echo "Git commit hash: ${env.IMAGE_TAG_HASH}"
                     bat "docker tag %IMAGE_NAME%:%IMAGE_TAG% %IMAGE_NAME%:%IMAGE_TAG_HASH%"
                 }
             }
@@ -43,7 +46,6 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    // Secure login using --password-stdin
                     bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
                     bat 'docker push %IMAGE_NAME%:%IMAGE_TAG%'
                     bat 'docker push %IMAGE_NAME%:%IMAGE_TAG_HASH%'
@@ -54,7 +56,6 @@ pipeline {
         stage('Deploy Container (Optional)') {
             steps {
                 echo 'Skipping deployment for now.'
-                // You can add docker run commands here to deploy
             }
         }
     }
