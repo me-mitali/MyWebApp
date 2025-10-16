@@ -1,68 +1,73 @@
 pipeline {
     agent any
 
+    environment {
+        // Docker Hub credentials will be injected here
+        DOCKER_CREDENTIALS = 'dockerhub-creds'
+        IMAGE_NAME = 'mitali23/mywebapp'
+        IMAGE_TAG = '1.0'
+    }
+
     stages {
-        stage('Clone Repository') {
+
+        stage('Checkout SCM') {
             steps {
-                git branch: 'master',
-                    url: 'https://github.com/me-mitali/MyWebApp.git'
+                git(
+                    url: 'https://github.com/me-mitali/MyWebApp.git',
+                    branch: 'master',
+                    credentialsId: '' // leave empty if public repo
+                )
             }
         }
 
         stage('Build with Maven') {
             steps {
-                echo "Building application with Maven..."
+                echo 'Building application with Maven...'
                 bat 'mvn clean package'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image..."
-                bat 'docker build -t mitali23/mywebapp:1.0 .'
+                echo 'Building Docker image...'
+                bat "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
             }
         }
 
-        stage('Push to Docker Hub') {
-      HEAD
+        stage('Push Docker Image') {
             steps {
-                echo "Pushing Docker image to Docker Hub..."
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
-                                                 usernameVariable: 'DOCKER_USER',
-                                                 passwordVariable: 'DOCKER_PASS')]) {
-                    bat """
-                        echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
-                        docker push mitali23/mywebapp:1.0
-                    """
+                echo 'Pushing Docker image to Docker Hub...'
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKER_CREDENTIALS}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
+                    bat "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
-    steps {
-        echo 'Pushing Docker image to Docker Hub...'
-        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-            bat """
-                echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
-                docker push mitali23/mywebapp:1.0
-            """
-          
         }
-    }
-}
-
 
         stage('Deploy Container') {
             steps {
-                echo "Deploying container..."
-                bat 'docker run -d -p 8080:8080 mitali23/mywebapp:1.0'
+                echo 'Deploying container...'
+                // Example: run container on the Jenkins host
+                bat "docker stop mywebapp || exit 0"
+                bat "docker rm mywebapp || exit 0"
+                bat "docker run -d --name mywebapp -p 8080:8080 ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
+
     }
 
     post {
         success {
-            echo "✅ Build and deployment successful!"
+            echo '✅ Pipeline succeeded!'
         }
         failure {
-            echo "❌ Build failed!"
+            echo '❌ Pipeline failed!'
         }
     }
 }
+
+        
