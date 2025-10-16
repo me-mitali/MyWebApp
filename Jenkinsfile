@@ -2,21 +2,16 @@ pipeline {
     agent any
 
     environment {
-        // Docker Hub credentials will be injected here
-        DOCKER_CREDENTIALS = 'dockerhub-creds'
         IMAGE_NAME = 'mitali23/mywebapp'
         IMAGE_TAG = '1.0'
+        DOCKER_CREDENTIALS = 'dockerhub-creds' // Jenkins credential ID
     }
 
     stages {
-
         stage('Checkout SCM') {
             steps {
-                git(
-                    url: 'https://github.com/me-mitali/MyWebApp.git',
-                    branch: 'master',
-                    credentialsId: '' // leave empty if public repo
-                )
+                echo 'Checking out source code...'
+                git url: 'https://github.com/me-mitali/MyWebApp.git', branch: 'master'
             }
         }
 
@@ -30,7 +25,13 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image...'
-                bat "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
+                // Tag with commit hash for unique tagging
+                script {
+                    def gitCommit = bat(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    env.IMAGE_TAG_HASH = gitCommit
+                    bat "docker tag %IMAGE_NAME%:%IMAGE_TAG% %IMAGE_NAME%:%IMAGE_TAG_HASH%"
+                }
             }
         }
 
@@ -42,27 +43,25 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
-                    bat "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                    // Secure login using --password-stdin
+                    bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
+                    bat 'docker push %IMAGE_NAME%:%IMAGE_TAG%'
+                    bat 'docker push %IMAGE_NAME%:%IMAGE_TAG_HASH%'
                 }
             }
         }
 
-        stage('Deploy Container') {
+        stage('Deploy Container (Optional)') {
             steps {
-                echo 'Deploying container...'
-                // Example: run container on the Jenkins host
-                bat "docker stop mywebapp || exit 0"
-                bat "docker rm mywebapp || exit 0"
-                bat "docker run -d --name mywebapp -p 8080:8080 ${IMAGE_NAME}:${IMAGE_TAG}"
+                echo 'Skipping deployment for now.'
+                // You can add docker run commands here to deploy
             }
         }
-
     }
 
     post {
         success {
-            echo '✅ Pipeline succeeded!'
+            echo '✅ Pipeline completed successfully!'
         }
         failure {
             echo '❌ Pipeline failed!'
@@ -70,4 +69,5 @@ pipeline {
     }
 }
 
-        
+
+   
