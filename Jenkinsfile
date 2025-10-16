@@ -22,21 +22,24 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                echo 'Building Docker image...'
-                bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
+       stage('Build Docker Image') {
+    steps {
+        echo 'Building Docker image...'
+        bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% ."
 
-                // Tag image with short Git commit hash
-                script {
-                    def gitCommit = bat(script: 'git rev-parse --short HEAD', returnStdout: true)
-                    gitCommit = gitCommit.trim() // Remove newlines
-                    env.IMAGE_TAG_HASH = gitCommit
-                    echo "Git commit hash: ${env.IMAGE_TAG_HASH}"
-                    bat "docker tag %IMAGE_NAME%:%IMAGE_TAG% %IMAGE_NAME%:%IMAGE_TAG_HASH%"
-                }
-            }
+        // Tag with Git commit hash
+        script {
+            // Get short commit hash
+            def gitCommit = bat(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+            env.IMAGE_TAG_HASH = gitCommit
+            echo "Git commit hash: ${env.IMAGE_TAG_HASH}"
+
+            // Proper Windows bat syntax with quotes
+            bat "docker tag %IMAGE_NAME%:%IMAGE_TAG% %IMAGE_NAME%:${env.IMAGE_TAG_HASH}"
         }
+    }
+}
+
 
         stage('Push Docker Image') {
             steps {
