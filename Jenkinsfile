@@ -43,7 +43,7 @@ pipeline {
                 echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
                 docker push mitali23/mywebapp:1.0
             """
-          44b54ed8176b698cb230deed00956350bb9c44df
+          
         }
     }
 }
