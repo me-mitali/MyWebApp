@@ -24,6 +24,7 @@ pipeline {
         }
 
         stage('Push to Docker Hub') {
+      HEAD
             steps {
                 echo "Pushing Docker image to Docker Hub..."
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
@@ -35,7 +36,18 @@ pipeline {
                     """
                 }
             }
+    steps {
+        echo 'Pushing Docker image to Docker Hub...'
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+            bat """
+                echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                docker push mitali23/mywebapp:1.0
+            """
+          44b54ed8176b698cb230deed00956350bb9c44df
         }
+    }
+}
+
 
         stage('Deploy Container') {
             steps {
